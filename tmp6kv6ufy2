@@ -1,0 +1,189 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jun  1 14:35:39 2020
+
+@author: s150127
+"""
+
+#%% Initialization
+
+import numpy as np
+import solver
+
+set_start_year  = 2021
+set_storages = ['Storage 1','Storage 2','Storage 3']
+set_renewables = ['solar','fission','wind']
+set_number_of_loops = 4
+set_max_counter = 2
+change = 0.1
+
+
+def norm_vector(method,years):
+    total = np.zeros([len(method),len(years)])
+    for year_index, year in enumerate(years):
+        vector = np.random.rand(len(method))
+        total[:,year_index] = vector/sum(vector)
+
+    return total
+
+
+def norm_vector_not_full(method,years):
+    total = np.zeros([len(method),len(years)])
+    for year_index, year in enumerate(years):
+        vector = np.random.rand(len(method))
+        total[:,year_index] = vector/sum(vector)*np.random.rand()
+
+    return total
+
+#%% Input
+
+input_end_year = int(input("What year does the transition have to be complete?: "))
+input_total_CO2_limit = float(input("What is the total Gt CO2 allowed to be emitted (standard XXX Gt)?: "))
+input_budget_fraction = float(input("What is the maximum percentage of budget allow to be used (standard XXX%)?: "))/100
+
+#%% Initialization 2
+years = np.array(range(set_start_year,input_end_year+1))
+tries = np.array(range(1,set_number_of_loops+1))
+set_tech = set_storages +set_renewables
+
+#base = np.ones(years.shape)/(len(set_tech))
+#parameters = {method:base for method in set_tech}
+
+#%% Solve method 1, random change
+
+# lowest_cost = float('Inf')
+# best_parameters = []
+# beun = 0
+
+# for loop in tries:
+#     for year_index, year in enumerate(years):
+#         for tech in set_tech:
+#             parameters = best_parameters
+#             counter = 0
+#             while counter < set_max_counter:
+#                 #[cost, total_CO2] = solver.solve(parameters)
+#                 total_CO2 = 5
+#                 cost = 5 - beun
+#                 beun +=1
+#                 if total_CO2 > input_total_CO2_limit:
+#                     counter+=1
+#                     continue
+#                 if cost < lowest_cost:
+#                     lowest_cost = cost
+#                     best_parameters = parameters
+#                     counter = 0
+
+#                     new = parameters[tech].copy()
+#                     new[year_index] = new[year_index]+change
+#                     parameters.update({tech: new})
+#                     change_others = change/(len(set_tech)-1)
+
+#                     for k, v in parameters.items():
+#                         if k != tech:
+#                             v_new = v.copy()
+#                             v_new[year_index] = v_new[year_index] - change_others
+#                             parameters.update({k: v_new})
+
+#                 else:
+#                     counter+=1
+
+#                     new = parameters[tech].copy()
+#                     new[year_index] = new[year_index]+change
+#                     parameters.update({tech: new})
+#                     change_others = change/(len(set_tech)-1)
+
+#                     for k, v in parameters.items():
+#                         if k != tech:
+#                             v_new = v.copy()
+#                             v_new[year_index] = v_new[year_index] - change_others
+#                             parameters.update({k: v_new})
+
+
+#%% Solve method two, total random
+# set_number_of_loops = 100000
+# tries = np.array(range(1,set_number_of_loops+1))
+
+# lowest_cost = float('Inf')
+# best_parameters = []
+# for loop in tries:
+
+#     base = norm_vector(set_tech,years)
+#     parameters = {method:base[num,:] for num, method in enumerate(set_tech)}
+#     #[cost, total_CO2, percentage] = solver.solve(parameters)
+#     total_CO2 =5
+#     cost = 5
+#     if total_CO2 > input_total_CO2_limit:
+#         continue
+#     if cost < lowest_cost:
+#         lowest_cost = cost
+#         best_parameters = parameters
+
+#%% Solve method three, random start, random iter
+# base = norm_vector(set_tech,years)
+# parameters = {method:base[num,:] for num, method in enumerate(set_tech)}
+
+# for loop in tries:
+#     #[cost, total_CO2, percentage] = solver.solve(parameters)
+#     total_CO2 =5
+#     cost = 5
+#     if total_CO2 > input_total_CO2_limit:
+#         continue
+#     if cost < lowest_cost:
+#         lowest_cost = cost
+#         best_parameters = parameters
+
+#     year_to_change = int(np.random.rand()*years.shape[0])
+#     vector = np.random.rand(len(set_tech))
+#     base[:,year_to_change] = vector/sum(vector)
+#     new = {method:base[num,:] for num, method in enumerate(set_tech)}
+#     parameters.update(new)
+
+
+#%% Solve method four, random start, random iter, reset
+
+def change_params(set_tech, params):
+    year_to_change = int(np.random.rand()*params.shape[1])
+    new_param = np.random.rand(params.shape[0])
+    new_param = new_param/sum(new_param)*np.random.rand()
+    params[:, year_to_change] = new_param
+    new = {method:params[num, :] for num, method in enumerate(set_tech)}
+
+    return [new, params]
+
+
+set_number_of_loops = 1000
+lowest_cost = float('Inf')
+best_parameters = []
+
+base = norm_vector_not_full(set_tech, years)
+parameters = {method:base[num, :] for num, method in enumerate(set_tech)}
+
+loop = 0
+
+while loop < set_number_of_loops:
+
+    parameter_values = norm_vector_not_full(set_tech, years)
+    parameters = {method:parameter_values[num, :] for num, method in enumerate(set_tech)}
+    parameters_values_iter = parameter_values
+
+    counter = 0
+
+    while counter < set_max_counter:
+        #[cost, total_CO2, percentage] = solver.solve(parameters)
+        total_CO2 =5
+        cost = 5
+        percentage = 100
+        if total_CO2 > input_total_CO2_limit or percentage != 100:
+            counter+=1
+            [parameters, parameter_values] = change_params(parameters_values_iter)
+            continue
+        if cost < lowest_cost:
+            lowest_cost = cost
+            best_parameters = parameters
+            parameters_values_iter = parameter_values
+            counter = 0
+            [parameters, parameter_values] = change_params(set_tech, parameters_values_iter)
+
+        loop+=1
+        if loop == set_number_of_loops:
+            break
