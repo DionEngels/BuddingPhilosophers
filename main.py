@@ -8,11 +8,15 @@ Created on Mon Jun  1 14:35:39 2020
 #%% Initialization
 
 import numpy as np
-import solver
+import Solver_MEPS
+import time
+import cProfile
+
+pr = cProfile.Profile()
 
 set_start_year  = 2021
-set_storages = ['Storage 1','Storage 2','Storage 3']
-set_renewables = ['solar','fission','wind']
+set_storages = ['storage']
+set_renewables = ['solar','nuclear','wind']
 set_number_of_loops = 4
 set_max_counter = 5
 change = 0.1
@@ -37,9 +41,16 @@ def norm_vector_not_full(method,years):
 
 #%% Input
 
-input_end_year = int(input("What year does the transition have to be complete?: "))
-input_total_CO2_limit = float(input("What is the total Gt CO2 allowed to be emitted (standard XXX Gt)?: "))
-input_budget_fraction = float(input("What is the maximum percentage of budget allow to be used (standard XXX%)?: "))/100
+input_end_year = int(2050)#int(input("What year does the transition have to be complete?: "))
+input_total_CO2_limit = float(100000000)#float(input("What is the total Gt CO2 allowed to be emitted (standard XXX Gt)?: "))
+input_budget_fraction = float(100)#float(input("What is the maximum percentage of budget allow to be used (standard XXX%)?: "))/100
+
+input_energy_mix = {'solar': 0.33 ,'wind': 0.34, 'nuclear': 0.33}
+
+
+dutch_budget = 1e6
+input_budget = input_budget_fraction*dutch_budget
+input_elec_share = 0.8
 
 #%% Initialization 2
 years = np.array(range(set_start_year,input_end_year+1))
@@ -152,7 +163,7 @@ def change_params(set_tech, params):
     return [new, new_params]
 
 
-set_number_of_loops = 1000
+set_number_of_loops = 10000
 lowest_cost = float('Inf')
 best_parameters = []
 
@@ -160,6 +171,9 @@ base = norm_vector_not_full(set_tech, years)
 parameters = {method:base[num, :] for num, method in enumerate(set_tech)}
 
 loop = 0
+
+start = time.time()
+pr.enable()
 
 while loop < set_number_of_loops:
 
@@ -170,11 +184,16 @@ while loop < set_number_of_loops:
     counter = 0
 
     while counter < set_max_counter:
-        #[cost, total_CO2, percentage] = solver.solve(parameters)
-        total_CO2 =5
-        cost = 5
-        percentage = 100
-        if total_CO2 > input_total_CO2_limit or percentage != 100:
+        cost, co2_total, percentage_renewables, percentage_storage = Solver_MEPS.solver(parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)
+        # total_CO2 =5
+        # cost = 5
+        # percentage = 100
+        
+        if loop % (set_number_of_loops/10) == 0:    
+            print('Starting '+str(loop)+' of ' + str(set_number_of_loops))
+        
+        if co2_total > input_total_CO2_limit or percentage_renewables != 100 or percentage_storage !=100:
+            loop+=1
             counter+=1
             [parameters, parameter_values] = change_params(set_tech, parameters_values_iter)
             continue
@@ -184,11 +203,19 @@ while loop < set_number_of_loops:
             best_parameters = parameters.copy()
             parameters_values_iter = parameter_values.copy()
             counter = 0
+            loop+=1
             [parameters, parameter_values] = change_params(set_tech, parameters_values_iter)
         else:
+            loop+=1
             counter+=1
             [parameters, parameter_values] = change_params(set_tech, parameters_values_iter)
 
-        loop+=1
         if loop == set_number_of_loops:
             break
+
+
+print('Time taken: ' + str(round(time.time() - start, 3)))
+pr.disable()
+pr.print_stats(sort='time')
+
+cost, co2_total, percentage_renewables, percentage_storage = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)
