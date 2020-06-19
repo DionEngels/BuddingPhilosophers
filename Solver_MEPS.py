@@ -5,17 +5,10 @@ Created on Mon Jun 15 14:23:21 2020
 @author: mepsm
 """
 # additions:
-    # added storage to list_of_params
-    # added calculation of p_sat
-    # removed cost_current because we would just calculate it new for
-      # each time step anyway
-    # added "intermittent" bool to renewables
-    # added "name" key to each list_of_params for loop
-    # added tau_exp to list_of_params, initial value set
-    
+    # values for td0 and fit_factor (exponential and linear) based on Marion's model
 # still to be fixed:
     # no storage mix right now
-    # fit_factor and exponential growth derivation in general...
+
 
 from math import log10, log, exp
 import numpy as np
@@ -24,6 +17,8 @@ import matplotlib.pyplot as plt
 
 def initial_params(energy_mix, t_end, electricity_share_end):
     t_init = 2021
+    fit_factor = 0.1 # exponential fit factor, from Marion's model
+    td0 = -1         # base doubling time,          " 
     
     world = {'energy_demand_total': 1000, 'electricity_share_init': 0.18,
              'electricity_share_end': electricity_share_end, 'non_renew_co2': 100}
@@ -34,22 +29,22 @@ def initial_params(energy_mix, t_end, electricity_share_end):
                                 for i in range(t_end - t_init + 1)]
     
     solar =  {'name': 'solar', 'cost_init': 10, 'power_init': 10,
-            'tau_life': 10, 'td0': 1,
-            'tau_exp': 1, 'fit_factor': 1e5, 'cap_factor': 1,
+            'tau_life': 10, 'td0': td0,
+            'tau_exp': 4, 'fit_factor': fit_factor, 'cap_factor': 1,
             'intermittent': True}
     solar['power_current'] = solar['power_init']
     solar['p_sat'] = world['energy_demand_total']*world['electricity_share_end']*energy_mix['solar']/solar['cap_factor']
 
     wind = {'name': 'wind', 'cost_init': 1, 'power_init': 1,
-            'tau_life': 10, 'td0': 1,
-            'tau_exp': 1, 'fit_factor': 1e5, 'cap_factor': 1,
+            'tau_life': 10, 'td0': td0,
+            'tau_exp': 4, 'fit_factor': fit_factor, 'cap_factor': 1,
             'intermittent': True}
     wind['power_current'] = wind['power_init']
     wind['p_sat'] = world['energy_demand_total']*world['electricity_share_end']*energy_mix['wind']/wind['cap_factor']
 
     nuclear = {'name': 'nuclear', 'cost_init': 100, 'power_init': 100,
-            'tau_life': 10, 'td0': 1,
-            'tau_exp': 1, 'fit_factor': 1e5, 'cap_factor': 1,
+            'tau_life': 10, 'td0': td0,
+            'tau_exp': 4, 'fit_factor': fit_factor, 'cap_factor': 1,
             'intermittent': False}
     nuclear['power_current'] = nuclear['power_init']
     nuclear['p_sat'] = world['energy_demand_total']*world['electricity_share_end']*energy_mix['nuclear']/nuclear['cap_factor']
@@ -57,8 +52,8 @@ def initial_params(energy_mix, t_end, electricity_share_end):
     list_of_params = [solar, wind, nuclear]
 
     storage = {'name': 'storage', 'cost_init': 1000, 'power_init': 1,
-            'tau_exp': 1, 'tau_life': 10, 'td0': 1,'cap_factor': 1,
-            'fit_factor': 1e5, 'intermittent': False}
+            'tau_exp': 4, 'tau_life': 10, 'td0': td0,'cap_factor': 1,
+            'fit_factor': fit_factor, 'intermittent': False}
     storage['power_current'] = storage['power_init']
     storage['p_sat'] = sum([i['p_sat']/12/storage['cap_factor'] for i in
                             list_of_params if i['intermittent']==True])
@@ -124,6 +119,8 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
                 renewable['tau_exp'] = 1/(log(2)/td0 + invest/(cost_current*fit_factor*p_trans))
                 
             elif power_current >= p_trans:
+                fit_factor = 1 #linear fit factor
+                renewable['fit_factor'] = fit_factor
                 growth = p_sat/tau_life + invest/(cost_current*fit_factor)
                 
             if power_current + growth > p_sat:
