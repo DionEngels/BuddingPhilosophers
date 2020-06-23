@@ -50,7 +50,7 @@ input_energy_mix = {'solar': 0.33 ,'wind': 0.34, 'nuclear': 0.33}
 
 dutch_budget = 1e6
 input_budget = input_budget_fraction*dutch_budget
-input_elec_share = 0.8
+input_elec_share = 0.26 #high estimate 0.54
 
 #%% Initialization 2
 years = np.array(range(set_start_year,input_end_year+1))
