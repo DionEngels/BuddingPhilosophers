@@ -42,7 +42,7 @@ def norm_vector_not_full(method,years):
 #%% Input
 
 input_end_year = int(2050)#int(input("What year does the transition have to be complete?: "))
-input_total_CO2_limit = float(100000000)#float(input("What is the total Gt CO2 allowed to be emitted (standard XXX Gt)?: "))
+input_total_CO2_limit = np.inf#float(input("What is the total Gt CO2 allowed to be emitted (standard XXX Gt)?: "))
 input_budget_fraction = float(100)#float(input("What is the maximum percentage of budget allow to be used (standard XXX%)?: "))/100
 
 input_energy_mix = {'solar': 0.33 ,'wind': 0.34, 'nuclear': 0.33}
@@ -152,18 +152,23 @@ set_tech = set_storages +set_renewables
 
 #%% Solve method four, random start, random iter, reset
 
-def change_params(set_tech, params):
-    year_to_change = int(np.random.rand()*params.shape[1])
-    new_param = np.random.rand(params.shape[0])
-    new_param = new_param/sum(new_param)*np.random.rand()
-    new_params = params.copy()
-    new_params[:, year_to_change] = new_param
-    new = {method:new_params[num, :] for num, method in enumerate(set_tech)}
+def change_params(set_tech, params, saturation_years, input_end_year, set_start_year):
+    i=0
+    
+    new_params = parameters.copy()
+    
+    for key, values in parameters.items():
+        if saturation_years[i,1]!=input_end_year:
+            new_values=values.copy()
+            new_values[int(saturation_years[i,0]-set_start_year):] = new_values[int(saturation_years[i,0]-set_start_year):]*0.95
+            new_params[key] = new_values
+    
+        i +=1
 
-    return [new, new_params]
+    return new_params
 
 
-set_number_of_loops = 10000
+set_number_of_loops = 10
 lowest_cost = float('Inf')
 best_parameters = []
 
@@ -179,36 +184,34 @@ while loop < set_number_of_loops:
 
     parameter_values = norm_vector_not_full(set_tech, years)
     parameters = {method:parameter_values[num, :] for num, method in enumerate(set_tech)}
-    parameters_values_iter = parameter_values.copy()
+    
 
-    counter = 0
+    
 
-    while counter < set_max_counter:
-        cost, co2_total, percentage_renewables, percentage_storage = Solver_MEPS.solver(parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)
-        # total_CO2 =5
-        # cost = 5
-        # percentage = 100
+    while True:
+        cost, co2_total, percentage_renewables, percentage_storage, saturation_years = Solver_MEPS.solver(parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 1)
+        #total_CO2 =5
+        #cost = 5
+        #percentage = 100
         
         if loop % (set_number_of_loops/10) == 0:    
             print('Starting '+str(loop)+' of ' + str(set_number_of_loops))
         
         if co2_total > input_total_CO2_limit or percentage_renewables != 100 or percentage_storage !=100:
             loop+=1
-            counter+=1
-            [parameters, parameter_values] = change_params(set_tech, parameters_values_iter)
-            continue
+            break
+          
 
         if cost < lowest_cost:
             lowest_cost = cost
             best_parameters = parameters.copy()
-            parameters_values_iter = parameter_values.copy()
-            counter = 0
+            
             loop+=1
-            [parameters, parameter_values] = change_params(set_tech, parameters_values_iter)
+            parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
         else:
             loop+=1
-            counter+=1
-            [parameters, parameter_values] = change_params(set_tech, parameters_values_iter)
+            break
+            
 
         if loop == set_number_of_loops:
             break
@@ -218,4 +221,7 @@ print('Time taken: ' + str(round(time.time() - start, 3)))
 pr.disable()
 pr.print_stats(sort='time')
 
-cost, co2_total, percentage_renewables, percentage_storage = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)
+if best_parameters==[]:
+    print("no solution found")
+else:
+    cost, co2_total, percentage_renewables, percentage_storage, saturation_years = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)

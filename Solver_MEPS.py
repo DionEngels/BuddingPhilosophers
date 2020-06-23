@@ -15,19 +15,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+
+
+
 def initial_params(energy_mix, t_end, electricity_share_end):
     t_init = 2021
     fit_factor = 0.1 # exponential fit factor, from Marion's model
-    td0 = -1         # base doubling time,          " 
+    td0 = -1        # base doubling time,          " 
     
-    world = {'energy_demand_total': 1000, 'electricity_share_init': 0.18,
+    world = {'energy_demand_total': 1e12, 'electricity_share_init': 0.18,
              'electricity_share_end': electricity_share_end, 'non_renew_co2': 100}
     
     world['electricity_share'] = [(world['electricity_share_end'] - 
                                    world['electricity_share_init'])/(t_end - t_init)*i
                                 + world['electricity_share_init']
                                 for i in range(t_end - t_init + 1)]
-    
+
     solar =  {'name': 'solar', 'cost_init': 10, 'power_init': 10,
             'tau_life': 10, 'td0': td0,
             'tau_exp': 4, 'fit_factor': fit_factor, 'cap_factor': 1,
@@ -68,6 +71,8 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
     list_of_params, world, t_init = initial_params(energy_mix, t_end, electricity_share_end)
     co2_total = 0
     cost = 0
+    visualization = 0
+    saturation_years=np.zeros((len(list_of_params),2))
     
     if visualization == 1:
         growth_matrix = np.zeros((len(list_of_params),t_end - t_init + 2))
@@ -109,19 +114,29 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
             p_sat = renewable['p_sat']
             fit_factor = renewable['fit_factor']
             p_trans = p_sat*tau_exp/tau_life
-                         
+            
+       
             if power_current >= p_sat:
                 growth = 0
                 invest = 0
+                #year of saturation
+                if     saturation_years[i,1] ==0 :
+                    saturation_years[i,1]=year+t_init
+                
+                
                 
             elif power_current < p_trans:
+                               
                 growth = power_current*(exp(log(2)/td0 + invest/(cost_current*fit_factor*p_trans)) - 1)
                 renewable['tau_exp'] = 1/(log(2)/td0 + invest/(cost_current*fit_factor*p_trans))
                 
             elif power_current >= p_trans:
+                #put linear year
                 fit_factor = 1 #linear fit factor
                 renewable['fit_factor'] = fit_factor
                 growth = p_sat/tau_life + invest/(cost_current*fit_factor)
+                if     saturation_years[i,0] ==0 :
+                    saturation_years[i,0]=year+t_init
                 
             if power_current + growth > p_sat:
                 growth = p_sat - power_current
@@ -162,6 +177,8 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
         plt.ylabel('Electricity Production')
         plt.show()
     
+    
+
             
-    return cost, co2_total, percentage_renewables, percentage_storage
+    return cost, co2_total, percentage_renewables, percentage_storage, saturation_years
  
