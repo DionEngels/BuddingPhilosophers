@@ -180,6 +180,10 @@ loop = 0
 start = time.time()
 pr.enable()
 
+# list for dominance (co2 vs cost) plot
+dominance_co2 = []
+dominance_cost = []
+
 while loop < set_number_of_loops:
 
     parameter_values = norm_vector_not_full(set_tech, years)
@@ -190,9 +194,6 @@ while loop < set_number_of_loops:
 
     while True:
         cost, co2_total, percentage_renewables, percentage_storage, saturation_years = Solver_MEPS.solver(parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 1)
-        #total_CO2 =5
-        #cost = 5
-        #percentage = 100
         
         if loop % (set_number_of_loops/10) == 0:    
             print('Starting '+str(loop)+' of ' + str(set_number_of_loops))
@@ -205,6 +206,9 @@ while loop < set_number_of_loops:
         if cost < lowest_cost:
             lowest_cost = cost
             best_parameters = parameters.copy()
+            
+            dominance_co2.append(co2_total) #this might be real slow bc append ain't great. might be able to do this in outer while loop if this is slow or stores too much?
+            dominance_cost.append(cost)
             
             loop+=1
             parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
@@ -225,3 +229,13 @@ if best_parameters==[]:
     print("no solution found")
 else:
     cost, co2_total, percentage_renewables, percentage_storage, saturation_years = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)
+
+    ax = plt.gca()
+    plt.scatter(dominance_cost/1e6, dominance_co2/1e6)
+    plt.xlabel('Total cost (million euros)')
+    plt.ylabel('Integrated CO2 emission (million kg)')
+    plt.show()
+    
+    
+    
+    
