@@ -11,6 +11,7 @@ import numpy as np
 import Solver_MEPS
 import time
 import cProfile
+import matplotlib.pyplot as plt
 
 pr = cProfile.Profile()
 
@@ -68,7 +69,7 @@ def change_params(set_tech, params, saturation_years, input_end_year, set_start_
     return new_params
 
 
-set_number_of_loops = 100000
+set_number_of_loops = 100
 lowest_cost = float('Inf')
 best_parameters = []
 
@@ -81,8 +82,9 @@ start = time.time()
 pr.enable()
 
 # list for dominance (co2 vs cost) plot
-dominance_co2 = []
-dominance_cost = []
+dominance_co2 = np.zeros(set_number_of_loops)
+dominance_cost = np.zeros(set_number_of_loops)
+dominance_loop = np.zeros(set_number_of_loops)
 
 while loop < set_number_of_loops:
 
@@ -104,8 +106,9 @@ while loop < set_number_of_loops:
             lowest_cost = cost
             best_parameters = parameters.copy()
             
-            dominance_co2.append(co2_total) #this might be real slow bc append ain't great. might be able to do this in outer while loop if this is slow or stores too much?
-            dominance_cost.append(cost)
+            dominance_co2[loop] = co2_total #this might be real slow bc append ain't great. might be able to do this in outer while loop if this is slow or stores too much?
+            dominance_cost[loop] = cost
+            dominance_loop[loop] = loop
             
             loop+=1
             parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
@@ -115,6 +118,11 @@ while loop < set_number_of_loops:
             
         if loop == set_number_of_loops:
             break
+
+dominance_co2 = dominance_co2[dominance_co2 > 0]
+dominance_cost = dominance_cost[dominance_cost > 0]
+dominance_loop = dominance_loop[dominance_loop > 0]
+
 
 
 print('Time taken: ' + str(round(time.time() - start, 3)))

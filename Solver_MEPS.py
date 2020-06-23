@@ -5,7 +5,6 @@ Created on Mon Jun 15 14:23:21 2020
 @authors: B.J. Alers, D.J. Engels, M.E. Smedberg
 """
 
-
 from math import log10, log, exp
 import numpy as np
 import matplotlib.pyplot as plt
