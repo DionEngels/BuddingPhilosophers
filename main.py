@@ -69,7 +69,7 @@ def change_params(set_tech, params, saturation_years, input_end_year, set_start_
     return new_params
 
 
-set_number_of_loops = 5000
+set_number_of_loops = 10000
 lowest_cost = float('Inf')
 best_parameters = []
 
@@ -88,10 +88,11 @@ dominance_loop = np.zeros(set_number_of_loops)
 
 while loop < set_number_of_loops:
 
+    iter_loop = 0
     parameter_values = norm_vector_not_full(set_tech, years)
     parameters = {method:parameter_values[num, :] for num, method in enumerate(set_tech)}
     
-    while True:
+    while iter_loop < 150:
         cost, co2_total, percentage_renewables, percentage_storage, saturation_years = Solver_MEPS.solver(parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)
 
         if loop % (set_number_of_loops/10) == 0:    
@@ -110,6 +111,7 @@ while loop < set_number_of_loops:
             dominance_cost[loop] = cost
             dominance_loop[loop] = loop
             
+            iter_loop+=1
             loop+=1
             parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
         else:
