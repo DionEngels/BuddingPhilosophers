@@ -153,7 +153,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
                 growth_matrix[i,year+1] = growth
                 invest_matrix[i,year+1] = invest
                 
-    elec_renew = sum([i['power_current'] for i in list_of_params if i['name']!='storage'])
+    elec_renew = sum([i['power_current']*i['cap_factor'] for i in list_of_params if i['name']!='storage'])
     percentage_renewables = int(elec_renew/(world['energy_demand_total']*world['electricity_share'][-1])*100)
     storage_current = sum([i['power_current']*i['cap_factor'] for i in list_of_params if i['name']=='storage'])
     elec_int = sum([i['power_current'] for i in list_of_params if i['intermittent']==True])
@@ -166,8 +166,19 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
             plt.plot(years, row, label=list_of_params[i]['name'])
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles, labels)
+        ax.set_ylim(ymin=0)
         plt.xlabel('Year')
-        plt.ylabel('Electricity Production')
+        plt.ylabel('Electricity Production (kWh)')
+        plt.show()
+        
+        ax = plt.gca()
+        for i, row in enumerate(power_matrix):
+            plt.plot(years, row/list_of_params[i]['p_sat'], label=list_of_params[i]['name'])
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles, labels)
+        ax.set_ylim(ymin=0)
+        plt.xlabel('Year')
+        plt.ylabel('Electricity Production (norm)')
         plt.show()
                 
     return cost, co2_total, percentage_renewables, percentage_storage, saturation_years

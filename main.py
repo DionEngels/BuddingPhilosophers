@@ -36,7 +36,7 @@ def norm_vector_not_full(method,years):
 
 input_end_year = int(2050)#int(input("What year does the transition have to be complete?: "))
 input_total_CO2_limit = np.inf#float(input("What is the total Gt CO2 allowed to be emitted (standard XXX Gt)?: "))
-input_budget_fraction = float(100)#float(input("What is the maximum percentage of budget allow to be used (standard XXX%)?: "))/100
+input_budget_fraction = float(10)#float(input("What is the maximum percentage of budget allow to be used (standard XXX%)?: "))/100
 
 input_energy_mix = {'solar': 0.33 ,'wind': 0.34, 'nuclear': 0.33}
 
@@ -44,7 +44,7 @@ set_start_year  = 2021
 set_storages = ['storage']
 set_renewables = ['solar','nuclear','wind']
 
-dutch_budget = 1e6
+dutch_budget = 1e9
 input_budget = input_budget_fraction*dutch_budget
 input_elec_share = 0.26 #high estimate 0.54
 
@@ -69,7 +69,7 @@ def change_params(set_tech, params, saturation_years, input_end_year, set_start_
     return new_params
 
 
-set_number_of_loops = 100
+set_number_of_loops = 5000
 lowest_cost = float('Inf')
 best_parameters = []
 
@@ -138,5 +138,7 @@ else:
     plt.scatter(dominance_cost/1e6, dominance_co2/1e6)
     plt.xlabel('Total cost (million euros)')
     plt.ylabel('Integrated CO2 emission (million kg)')
+    ax.set_ylim(ymin=0)
+    ax.set_ylim(ymin=0)
     plt.show()
     
