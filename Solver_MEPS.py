@@ -50,7 +50,7 @@ def initial_params(energy_mix, t_end, electricity_share_end):
                                            
     list_of_params = [solar, wind, nuclear]
 
-    storage = {'name': 'storage', 'cost_init': 1383, 'power_init': 0.03e6,
+    storage = {'name': 'storage', 'cost_init': 383, 'power_init': 0.03e6,
             'tau_exp': 4, 'tau_life': 15, 'td0': td0,'cap_factor': 0.85,
             'fit_factor': fit_factor, 'intermittent': False}
     storage['power_current'] = storage['power_init']
@@ -118,13 +118,13 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
                 if saturation_years[renewable['name']][1] == 0:
                     saturation_years[renewable['name']][1] = year+t_init           
                  
-            elif power_current < p_trans:
+            elif power_current < p_trans: #exponential
                                
                 growth = power_current*(exp(log(2)/td0 + invest/(cost_current*fit_factor*p_trans)) - 1)
                 renewable['tau_exp'] = 1/(log(2)/td0 + invest/(cost_current*fit_factor*p_trans))
+                #print(renewable['tau_exp'])
                 
-            elif power_current >= p_trans:
-                #put linear year
+            elif power_current >= p_trans: #linear
                 fit_factor = 1 #linear fit factor
                 renewable['fit_factor'] = fit_factor
                 growth = p_sat/tau_life + invest/(cost_current*fit_factor)
@@ -163,12 +163,12 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
         years = list(range(t_init-1,t_end+1))
         ax = plt.gca()
         for i, row in enumerate(power_matrix):
-            plt.plot(years, row, label=list_of_params[i]['name'])
+            plt.plot(years, row/1e9, label=list_of_params[i]['name'])
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles, labels)
         ax.set_ylim(ymin=0)
         plt.xlabel('Year')
-        plt.ylabel('Electricity Production (kWh)')
+        plt.ylabel('Nominal Installed Capacity (TWh)')
         plt.show()
         
         ax = plt.gca()

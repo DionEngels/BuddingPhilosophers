@@ -36,7 +36,7 @@ def norm_vector_not_full(method,years):
 
 input_end_year = int(2050)#int(input("What year does the transition have to be complete?: "))
 input_total_CO2_limit = np.inf#float(input("What is the total Gt CO2 allowed to be emitted (standard XXX Gt)?: "))
-input_budget_fraction = float(10)#float(input("What is the maximum percentage of budget allow to be used (standard XXX%)?: "))/100
+input_budget_fraction = float(1)#float(input("What is the maximum percentage of budget allow to be used (standard XXX%)?: "))/100
 
 input_energy_mix = {'solar': 0.33 ,'wind': 0.34, 'nuclear': 0.33}
 
@@ -129,7 +129,7 @@ dominance_loop = dominance_loop[dominance_loop > 0]
 
 print('Time taken: ' + str(round(time.time() - start, 3)))
 pr.disable()
-pr.print_stats(sort='time')
+#pr.print_stats(sort='time')
 
 if best_parameters==[]:
     print("no solution found")
@@ -137,10 +137,11 @@ else:
     cost, co2_total, percentage_renewables, percentage_storage, saturation_years = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 1)
 
     ax = plt.gca()
-    plt.scatter(dominance_cost/1e6, dominance_co2/1e6)
-    plt.xlabel('Total cost (million euros)')
-    plt.ylabel('Integrated CO2 emission (million kg)')
-    ax.set_ylim(ymin=0)
-    ax.set_ylim(ymin=0)
+    scatter = plt.scatter(dominance_cost/1e9, dominance_co2/1e9, c=dominance_co2/1e9, cmap = 'Purples',s=500, edgecolors="black")
+    plt.xlabel('Total cost (billion euros)')
+    plt.ylabel('Integrated CO2 emission (billion kg)')
+    handles, _ = scatter.legend_elements(num=2)
+    labels = ['first iteration','last iteration']
+    plt.legend(handles, labels)
     plt.show()
     
