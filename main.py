@@ -69,6 +69,31 @@ def change_params(set_tech, params, saturation_years, input_end_year, set_start_
     return new_params
 
 
+def increase_params(set_tech, parameters, key, input_end_year, set_start_year):
+    
+    new_params = parameters.copy()
+
+    new_values=parameters[key].copy()
+    new_values = new_values*1.05
+    new_params[key] = new_values
+
+    return new_params
+
+def norm_params(parameters):
+    total = np.zeros([len(parameters),len(list(parameters.values())[0])])
+    for i, values in enumerate(list(parameters.values())):
+        total[i, :] = values    
+        
+    for i in range(0, len(list(parameters.values())[0])):
+        if np.sum(total[:, i]) > 1.0:
+            total[:, i] = total[:, i]/np.sum(total[:, i])
+        
+    new_params = {method:total[num, :] for num, method in enumerate(parameters.keys())}
+    
+    return new_params
+
+#%% Main part
+
 set_number_of_loops = 10000
 lowest_cost = float('Inf')
 best_parameters = []
@@ -93,21 +118,38 @@ while loop < set_number_of_loops:
     parameters = {method:parameter_values[num, :] for num, method in enumerate(set_tech)}
     
     while iter_loop < 150:
-        cost, co2_total, percentage_renewables, percentage_storage, saturation_years = Solver_MEPS.solver(parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)
+        cost, co2_total, percentage, saturation_years = Solver_MEPS.solver(parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)
 
         if loop % (set_number_of_loops/10) == 0:    
             print('Starting '+str(loop)+' of ' + str(set_number_of_loops))
         
-        if co2_total > input_total_CO2_limit or percentage_renewables != 100 or percentage_storage !=100:
+        if co2_total > input_total_CO2_limit:
             loop+=1
+            high_co2 = True
             break
+        
+        if any(values == 0 for values in percentage.values()):
+            loop+=1
+            low_money = True
+            high_co2 = False
+            break
+        
+        if any(values < 1 for values in percentage.values()):
+            for key, values in percentage.items():
+                if values < 1:
+                    parameters = increase_params(set_tech, parameters, key, input_end_year, set_start_year)
+                    
+            parameters = norm_params(parameters)
+            iter_loop +=1
           
 
         if cost < lowest_cost:
+            low_money = False
+            high_co2 = False
             lowest_cost = cost
             best_parameters = parameters.copy()
             
-            dominance_co2[loop] = co2_total #this might be real slow bc append ain't great. might be able to do this in outer while loop if this is slow or stores too much?
+            dominance_co2[loop] = co2_total
             dominance_cost[loop] = cost
             dominance_loop[loop] = loop
             
@@ -132,9 +174,9 @@ pr.disable()
 #pr.print_stats(sort='time')
 
 if best_parameters==[]:
-    print("no solution found")
+    print("No solution found")
 else:
-    cost, co2_total, percentage_renewables, percentage_storage, saturation_years = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 1)
+    cost, co2_total, percentage, saturation_years = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 1)
 
     ax = plt.gca()
     scatter = plt.scatter(dominance_cost/1e9, dominance_co2/1e9, c=dominance_co2/1e9, cmap = 'Purples',s=500, edgecolors="black")
@@ -144,4 +186,7 @@ else:
     labels = ['first iteration','last iteration']
     plt.legend(handles, labels)
     plt.show()
-    
+if low_money == True:
+    print("You are too poor. Increase total budget")
+if high_co2 == True:
+    print("You are over the CO2 limit. Increase CO2 limit or spend more.")

@@ -108,7 +108,10 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
             tau_exp = renewable['tau_exp']
             p_sat = renewable['p_sat']
             fit_factor = renewable['fit_factor']
-            p_trans = p_sat*tau_exp/tau_life
+            if tau_exp < 0:
+                p_trans = p_sat
+            else:
+                p_trans = p_sat*tau_exp/tau_life
             
        
             if power_current >= p_sat:
@@ -151,14 +154,10 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
                     power_matrix[i,year] = power_current-growth
                 power_matrix[i,year+1] = power_current
                 growth_matrix[i,year+1] = growth
-                invest_matrix[i,year+1] = invest
+                invest_matrix[i,year+1] = invest 
                 
-    elec_renew = sum([i['power_current']*i['cap_factor'] for i in list_of_params if i['name']!='storage'])
-    percentage_renewables = int(elec_renew/(world['energy_demand_total']*world['electricity_share'][-1])*100)
-    storage_current = sum([i['power_current']*i['cap_factor'] for i in list_of_params if i['name']=='storage'])
-    elec_int = sum([i['power_current'] for i in list_of_params if i['intermittent']==True])
-    percentage_storage = int(storage_current/(elec_int/12)*100)
-                
+    percentage={method['name']: int(method['power_current']/method['p_sat']) for method in list_of_params}
+                    
     if visualization == 1:
         years = list(range(t_init-1,t_end+1))
         ax = plt.gca()
@@ -181,5 +180,5 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
         plt.ylabel('Electricity Production (norm)')
         plt.show()
                 
-    return cost, co2_total, percentage_renewables, percentage_storage, saturation_years
+    return cost, co2_total, percentage, saturation_years
  
