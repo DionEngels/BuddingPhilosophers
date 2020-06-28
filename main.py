@@ -24,11 +24,12 @@ def norm_vector(method,years):
     return total
 
 
-def norm_vector_not_full(method,years):
+def norm_vector_not_full(method, years, storage_buff):
     total = np.zeros([len(method),len(years)])
     for year_index, year in enumerate(years):
         vector = np.random.rand(len(method))
-        total[:,year_index] = vector/sum(vector)*np.random.rand()
+        vector[0] = vector[0]*storage_buff
+        total[:,year_index] = vector/sum(vector)#*np.random.rand()
 
     return total
 
@@ -44,7 +45,7 @@ set_start_year  = 2021
 set_storages = ['storage']
 set_renewables = ['solar','nuclear','wind']
 
-dutch_budget = 1e9
+dutch_budget = 1e11
 input_budget = input_budget_fraction*dutch_budget
 input_elec_share = 0.26 #high estimate 0.54
 
@@ -53,7 +54,7 @@ years = np.array(range(set_start_year,input_end_year+1))
 set_tech = set_storages +set_renewables
 #%% Solve method four, random start, directed iter, reset
 
-def change_params(set_tech, params, saturation_years, input_end_year, set_start_year):
+def change_params(set_tech, parameters, saturation_years, input_end_year, set_start_year):
     i=0
     
     new_params = parameters.copy()
@@ -61,7 +62,12 @@ def change_params(set_tech, params, saturation_years, input_end_year, set_start_
     for key, values in parameters.items():
         if saturation_years[key][1] != input_end_year:
             new_values=values.copy()
-            new_values[int(saturation_years[key][0]-set_start_year):] = new_values[int(saturation_years[key][0]-set_start_year):]*0.95
+            
+            if saturation_years[key][0] < set_start_year + 5:
+                new_values[:] = new_values[:]*0.9
+            else:
+                new_values[int(saturation_years[key][0]-set_start_year-1):] = new_values[int(saturation_years[key][0]-set_start_year-1):]*0.9
+            
             new_params[key] = new_values
     
         i +=1
@@ -94,14 +100,13 @@ def norm_params(parameters):
 
 #%% Main part
 
-set_number_of_loops = 10000
+set_number_of_loops = 100000
+storage_buff = 20
 lowest_cost = float('Inf')
 best_parameters = []
 
-base = norm_vector_not_full(set_tech, years)
-parameters = {method:base[num, :] for num, method in enumerate(set_tech)}
-
 loop = 0
+max_iter = 500
 
 start = time.time()
 pr.enable()
@@ -112,12 +117,18 @@ dominance_cost = np.zeros(set_number_of_loops)
 dominance_loop = np.zeros(set_number_of_loops)
 
 while loop < set_number_of_loops:
-
+    try:
+        trans_years = np.asarray([int(sat[0]) for key, sat in saturation_years.items() if key!='storage'])
+        trans_years[trans_years == 0] = set_start_year*10
+        if np.mean(trans_years) < set_start_year + 10:
+            storage_buff = storage_buff*1.2
+    except:
+        pass
     iter_loop = 0
-    parameter_values = norm_vector_not_full(set_tech, years)
+    parameter_values = norm_vector_not_full(set_tech, years, storage_buff)
     parameters = {method:parameter_values[num, :] for num, method in enumerate(set_tech)}
     
-    while iter_loop < 150:
+    while iter_loop < max_iter:
         cost, co2_total, percentage, saturation_years = Solver_MEPS.solver(parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 0)
 
         if loop % (set_number_of_loops/10) == 0:    
@@ -129,19 +140,23 @@ while loop < set_number_of_loops:
             break
         
         if any(values == 0 for values in percentage.values()):
-            loop+=1
             low_money = True
             high_co2 = False
-            break
+            if iter_loop == 0:
+                storage_buff = storage_buff/1.2
         
-        if any(values < 1 for values in percentage.values()):
+        if any(values < 100 for values in percentage.values()):
             for key, values in percentage.items():
-                if values < 1:
+                if values < 100:
                     parameters = increase_params(set_tech, parameters, key, input_end_year, set_start_year)
                     
             parameters = norm_params(parameters)
+            loop+=1
             iter_loop +=1
-          
+            if loop == set_number_of_loops:
+                break
+            else:
+                continue
 
         if cost < lowest_cost:
             low_money = False
@@ -158,7 +173,8 @@ while loop < set_number_of_loops:
             parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
         else:
             loop+=1
-            break
+            iter_loop+=1
+            parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
             
         if loop == set_number_of_loops:
             break
@@ -177,7 +193,9 @@ if best_parameters==[]:
     print("No solution found")
 else:
     cost, co2_total, percentage, saturation_years = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 1)
-
+    
+    low_money  = False
+    
     ax = plt.gca()
     scatter = plt.scatter(dominance_cost/1e9, dominance_co2/1e9, c=dominance_co2/1e9, cmap = 'Purples',s=500, edgecolors="black")
     plt.xlabel('Total cost (billion euros)')

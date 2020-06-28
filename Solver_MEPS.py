@@ -50,8 +50,13 @@ def initial_params(energy_mix, t_end, electricity_share_end):
                                            
     list_of_params = [solar, wind, nuclear]
 
-    storage = {'name': 'storage', 'cost_init': 383, 'power_init': 0.03e6,
-            'tau_exp': 4, 'tau_life': 15, 'td0': td0,'cap_factor': 0.85,
+    pumped_hydro_capacity_europe = 640 + 1032 + 600 + 560 + 8480 + 504 + 2087 + 590 + 950 + 4018 + 591 + 690 + 2064 + 487 + 3428 + 476 + 523 + 642 + 1300 + 24500 + 36400 + 3600 + 4675
+    NL_frac_europe = 0.05
+    # 'cost_init': 75, 'power_init': pumped_hydro_capacity_europe*1e6*NL_frac_europe,
+    # 'tau_life': 50,
+
+    storage = {'name': 'storage', 'cost_init': 75, 'power_init': pumped_hydro_capacity_europe*1e6*NL_frac_europe,
+            'tau_exp': 4, 'tau_life': 50, 'td0': td0,'cap_factor': 0.85,
             'fit_factor': fit_factor, 'intermittent': False}
     storage['power_current'] = storage['power_init']
     storage['p_sat'] = sum([i['p_sat']/12/storage['cap_factor'] for i in
@@ -116,10 +121,12 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
        
             if power_current >= p_sat:
                 growth = 0
-                invest = 0
+                invest = parameters[renewable['name']][i]*max_budget
                 #year of saturation
                 if saturation_years[renewable['name']][1] == 0:
-                    saturation_years[renewable['name']][1] = year+t_init           
+                    saturation_years[renewable['name']][1] = year+t_init        
+                if     saturation_years[renewable['name']][0] == 0:
+                    saturation_years[renewable['name']][0] = year+t_init
                  
             elif power_current < p_trans: #exponential
                                
@@ -156,7 +163,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
                 growth_matrix[i,year+1] = growth
                 invest_matrix[i,year+1] = invest 
                 
-    percentage={method['name']: int(method['power_current']/method['p_sat']) for method in list_of_params}
+    percentage={method['name']: int(method['power_current']/method['p_sat']*100) for method in list_of_params}
                     
     if visualization == 1:
         years = list(range(t_init-1,t_end+1))
