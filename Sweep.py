@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 
 input_end_year = int(2050)#int(input("What year does the transition have to be complete?: "))
 input_total_CO2_limit = np.inf#float(input("What is the total Gt CO2 allowed to be emitted (standard XXX Gt)?: "))
-input_budget_fraction = float(1)#float(input("What is the maximum percentage of budget allow to be used (standard XXX%)?: "))/100
 
 input_energy_mix = {'solar': 0.33 ,'wind': 0.34, 'nuclear': 0.33}
 
@@ -27,7 +26,6 @@ set_storages = ['storage']
 set_renewables = ['solar','nuclear','wind']
 
 dutch_budget = 1e11
-input_budget = input_budget_fraction*dutch_budget
 input_elec_share = 0.26 #high estimate 0.54
 
 fit_factor_exp = 0.1 #exponential
@@ -193,7 +191,7 @@ for sweep_number, variable in enumerate(sweep_var):
             parameters = {method:parameter_values[num, :] for num, method in enumerate(set_tech)}
             
             while iter_loop < max_iter:
-                cost, co2_total, percentage, saturation_years = Solver_for_sweep.solver(parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, fit_factor_exp, td0, fit_factor_lin, 0)
+                cost, co2_total, percentage, saturation_years = Solver_for_sweep.solver(parameters, input_energy_mix, input_end_year, dutch_budget, input_elec_share, fit_factor_exp, td0, fit_factor_lin, 0)
         
                 if loop % (set_number_of_loops/5) == 0:    
                     print('Starting '+str(loop)+' of ' + str(set_number_of_loops))
@@ -255,7 +253,7 @@ for sweep_number, variable in enumerate(sweep_var):
             print("No solution found")
         else:
             cost, co2_total, percentage, saturation_years = Solver_for_sweep.solver(best_parameters,
-                             input_energy_mix, input_end_year, input_budget, input_elec_share,
+                             input_energy_mix, input_end_year, dutch_budget, input_elec_share,
                              fit_factor_exp, td0, fit_factor_lin, final_visualization)
             
             sweep_co2[value_index] = co2_total
