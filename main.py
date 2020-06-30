@@ -100,7 +100,7 @@ def norm_params(parameters):
 
 #%% Main part
 
-set_number_of_loops = 100000
+set_number_of_loops = 100
 storage_buff = 20
 lowest_cost = float('Inf')
 best_parameters = []
@@ -197,13 +197,21 @@ else:
     low_money  = False
     
     ax = plt.gca()
-    scatter = plt.scatter(dominance_cost/1e9, dominance_co2/1e9, c=dominance_co2/1e9, cmap = 'Purples',s=500, edgecolors="black")
+    scatter = plt.scatter(dominance_cost/1e9, dominance_co2/1e9, c=dominance_co2/1e9, cmap = 'Purples',s=200, edgecolors="black",alpha=0.5)
     plt.xlabel('Total cost (billion euros)')
     plt.ylabel('Integrated CO2 emission (billion kg)')
     handles, _ = scatter.legend_elements(num=2)
     labels = ['first iteration','last iteration']
     plt.legend(handles, labels)
+    plt.grid(True)
+    plt.locator_params(axis='x', nbins=10)
+    plt.locator_params(axis='y', nbins=10)
+    plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
+    
     plt.show()
+    
+    
+    
 if low_money == True:
     print("You are too poor. Increase total budget")
 if high_co2 == True:

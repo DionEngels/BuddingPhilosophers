@@ -78,10 +78,13 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
         growth_matrix = np.zeros((len(list_of_params),t_end - t_init + 2))
         power_matrix = np.zeros((len(list_of_params),t_end - t_init + 2))
         
+        
         invest_matrix = np.zeros((len(list_of_params),t_end - t_init + 2))
+        integrated_invest_matrix=np.zeros((len(list_of_params),t_end - t_init + 2))
         
         co2_yearly_matrix = np.zeros((1,t_end - t_init + 2))
-        co2_total_matrix = np.zeros((1,t_end - t_init + 2))
+        co2_total_matrix = np.zeros((1,t_end - t_init + 2))        
+        costs_total_matrix = np.zeros((1,t_end - t_init + 2))
     
     for year in range(t_end - t_init + 1):
         
@@ -156,36 +159,153 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
                 
             cost += invest
             
+            
             if visualization == 1:
                 if year == 0:
                     power_matrix[i,year] = power_current-growth
                 power_matrix[i,year+1] = power_current
                 growth_matrix[i,year+1] = growth
                 invest_matrix[i,year+1] = invest 
+                integrated_invest_matrix[i,year+1] = sum(invest_matrix[i,0:year+1])
+                costs_total_matrix[0,year+1] = cost
                 
     percentage={method['name']: int(method['power_current']/method['p_sat']*100) for method in list_of_params}
                     
     if visualization == 1:
         years = list(range(t_init-1,t_end+1))
         ax = plt.gca()
+        
+        
+        #plot for nominal installed capacity per energy source
         for i, row in enumerate(power_matrix):
             plt.plot(years, row/1e9, label=list_of_params[i]['name'])
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles, labels)
         ax.set_ylim(ymin=0)
+        ax.set_xlim(xmin=2020)
         plt.xlabel('Year')
         plt.ylabel('Nominal Installed Capacity (TWh)')
+        plt.grid(True)
+        plt.locator_params(axis='x', nbins=10)
+        plt.locator_params(axis='y', nbins=10)
+        plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
+        plt.show()
         plt.show()
         
         ax = plt.gca()
+        
+        #plot for normalised electricity production
         for i, row in enumerate(power_matrix):
             plt.plot(years, row/list_of_params[i]['p_sat'], label=list_of_params[i]['name'])
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles, labels)
         ax.set_ylim(ymin=0)
+        ax.set_xlim(xmin=2020)
         plt.xlabel('Year')
         plt.ylabel('Electricity Production (norm)')
+        plt.grid(True)
+        plt.locator_params(axis='x', nbins=10)
+        plt.locator_params(axis='y', nbins=10)
+        plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
+        
         plt.show()
+        plt.show()
+        
+        ax = plt.gca()
+        
+        #plot for yearly co2 production with the grand total plotted
+
+        plt.bar(years, co2_yearly_matrix[0,:])
+        plt.plot(years,co2_total_matrix[0,:])
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles, labels)
+        ax.set_ylim(ymin=0)
+        ax.set_xlim(xmin=2020)
+        plt.xlabel('Year')
+        plt.ylabel('CO2 per year + integrated CO2')
+        plt.grid(True)
+        plt.locator_params(axis='x', nbins=10)
+        plt.locator_params(axis='y', nbins=10)
+        plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
+        
+        plt.show()
+        plt.show()
+        
+        #plot for total costs per year
+
+        plt.bar(years, costs_total_matrix[0,:])
+        
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles, labels)
+        ax.set_ylim(ymin=0)
+        ax.set_xlim(xmin=2020)
+        plt.xlabel('Year')
+        plt.ylabel('Integrated costs (euros)')
+        plt.grid(True)
+        plt.locator_params(axis='x', nbins=10)
+        plt.locator_params(axis='y', nbins=10)
+        plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
+        
+        plt.show()
+        plt.show()
+        
+        #plot for the total costs per renewable
+        ax = plt.gca()
+        for i, row in enumerate(invest_matrix):
+            plt.plot(years, row, label=list_of_params[i]['name'])
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles, labels)
+        ax.set_ylim(ymin=0)
+        ax.set_xlim(xmin=2020)
+        plt.xlabel('Year')
+        plt.ylabel('Yearly investment per renewable (euro)')
+        plt.grid(True)
+        plt.locator_params(axis='x', nbins=10)
+        plt.locator_params(axis='y', nbins=10)
+        plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
+        plt.show()
+        plt.show()
+        
+        #plot integrated costs per renewable
+        
+        ax = plt.gca()
+        for i, row in enumerate( integrated_invest_matrix):
+            plt.plot(years, row, label=list_of_params[i]['name'])
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles, labels)
+        ax.set_ylim(ymin=0)
+        ax.set_xlim(xmin=2020)
+        plt.xlabel('Year')
+        plt.ylabel('Integrated costs per renewable (euro)')
+        plt.grid(True)
+        plt.locator_params(axis='x', nbins=10)
+        plt.locator_params(axis='y', nbins=10)
+        plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
+        plt.show()
+        plt.show()
+  
+    
+        #plot iterations vs time
+        
+        ax = plt.gca()
+        
+        plt.scatter([0.001, 0.024, 0.079, 0.779, 7.255, 68.965, 716.472],[1, 10, 100, 1000, 10000, 100000, 1000000])
+        
+        
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_ylim(ymin=0.1)
+        ax.set_xlim(xmin=0.0001)
+        plt.xlabel('Computational Time (seconds)')
+        plt.ylabel('Number of Iterations')
+        plt.grid(True)
+
+        plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
+        plt.show()
+        plt.show()
+
+        
+        
                 
     return cost, co2_total, percentage, saturation_years
  
