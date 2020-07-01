@@ -22,25 +22,22 @@ def norm_vector_not_full(method, years, storage_buff):
     return total
 
 def change_params(set_tech, parameters, saturation_years, input_end_year, set_start_year):
-    i=0
     
     new_params = parameters.copy()
     
     for key, values in parameters.items():
+        
         if saturation_years[key][1] != input_end_year:
             new_values=values.copy()
             
-            if saturation_years[key][0] < set_start_year + 5:
-                new_values[:] = new_values[:]*0.9
-            else:
-                new_values[int(saturation_years[key][0]-set_start_year-1):] = new_values[int(saturation_years[key][0]-set_start_year-1):]*0.9
+            #if saturation_years[key][0] < set_start_year + 5:
+            #    new_values[:] = new_values[:]*0.9
+            #else:
+            new_values[int(saturation_years[key][0]-set_start_year):] = new_values[int(saturation_years[key][0]-set_start_year):]*0.9
             
             new_params[key] = new_values
     
-        i +=1
-
     return new_params
-
 
 def increase_params(set_tech, parameters, key, input_end_year, set_start_year):
     
@@ -77,13 +74,13 @@ set_start_year  = 2021
 set_storages = ['storage']
 set_renewables = ['solar','nuclear','wind']
 
-dutch_budget = 1e11
+dutch_budget = 1e12
 input_budget = input_budget_fraction*dutch_budget
 input_elec_share = 0.26 #high estimate 0.54
 
-set_number_of_loops = 100000
-max_iter = 500
-storage_buff = 20
+set_number_of_loops = 50000
+max_iter = 250
+storage_buff = 100
 
 #%% Initialization
 years = np.array(range(set_start_year,input_end_year+1))
@@ -177,7 +174,6 @@ if best_parameters==[]:
     print("No solution found")
 else:
     cost, co2_total, percentage, saturation_years = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 1)
-    
     low_money  = False
     
     ax = plt.gca()

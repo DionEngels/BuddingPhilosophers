@@ -105,7 +105,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, fit
             co2_total_matrix[0,year+1] = co2_total
         
         for i, renewable in enumerate(list_of_params):
-            invest = parameters[renewable['name']][i]*max_budget
+            invest = parameters[renewable['name']][year]*max_budget
             power_current = renewable['power_current']
             cost_current = renewable['cost_init']*(0.5)**log10(power_current/renewable['power_init'])
             tau_life = renewable['tau_life']
@@ -131,8 +131,13 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, fit
             elif power_current < p_trans: #exponential
                                
                 growth = power_current*(exp(log(2)/td0 + invest/(cost_current*fit_factor*p_trans)) - 1)
-                renewable['tau_exp'] = 1/(log(2)/td0 + invest/(cost_current*fit_factor*p_trans))
+                
                 #print(renewable['tau_exp'])
+                
+                if power_current + growth > p_trans:
+                    growth = (p_trans - power_current)*1.01
+                else:
+                    renewable['tau_exp'] = 1/(log(2)/td0 + invest/(cost_current*fit_factor*p_trans))
                 
             elif power_current >= p_trans: #linear
                 fit_factor = fit_factor_lin #linear fit factor

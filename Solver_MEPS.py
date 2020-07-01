@@ -139,8 +139,13 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
             elif power_current < p_trans: #exponential
                                
                 growth = power_current*(exp(log(2)/td0 + invest/(cost_current*fit_factor*p_trans)) - 1)
-                renewable['tau_exp'] = 1/(log(2)/td0 + invest/(cost_current*fit_factor*p_trans))
+                
                 #print(renewable['tau_exp'])
+                
+                if power_current + growth > p_trans:
+                    growth = (p_trans - power_current)*1.01
+                else:
+                    renewable['tau_exp'] = 1/(log(2)/td0 + invest/(cost_current*fit_factor*p_trans))
                 
             elif power_current >= p_trans: #linear
                 fit_factor = 1 #linear fit factor
@@ -148,7 +153,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
                 growth = p_sat/tau_life + invest/(cost_current*fit_factor)
                 if     saturation_years[renewable['name']][0] == 0:
                     saturation_years[renewable['name']][0] = year+t_init
-                
+                                    
             if power_current + growth > p_sat:
                 growth = p_sat - power_current
                 #invest = (growth - p_sat/tau_life)*(cost_current*fit_factor)
