@@ -100,7 +100,7 @@ def norm_params(parameters):
 
 #%% Main part
 
-set_number_of_loops = 100
+set_number_of_loops = 200000
 storage_buff = 20
 lowest_cost = float('Inf')
 best_parameters = []
@@ -195,21 +195,19 @@ else:
     cost, co2_total, percentage, saturation_years = Solver_MEPS.solver(best_parameters, input_energy_mix, input_end_year, input_budget, input_elec_share, 1)
     
     low_money  = False
-    
+#%%
     ax = plt.gca()
-    scatter = plt.scatter(dominance_cost/1e9, dominance_co2/1e9, c=dominance_co2/1e9, cmap = 'Purples',s=200, edgecolors="black",alpha=0.5)
+    scatter = plt.scatter(dominance_cost/1e9, dominance_co2/1e9, c=dominance_co2/1e9, cmap = 'Purples',s=200, edgecolors="black")#,alpha=0.5)
     plt.xlabel('Total cost (billion euros)')
     plt.ylabel('Integrated CO2 emission (billion kg)')
-    handles, _ = scatter.legend_elements(num=2)
-    labels = ['first iteration','last iteration']
+    handles, _ = scatter.legend_elements(num=3)
+    labels = ['first iteration','last iteration'] #check size of handles, if 3 then add ,'', in middle or change to 2 in line above
     plt.legend(handles, labels)
     plt.grid(True)
-    plt.locator_params(axis='x', nbins=10)
-    plt.locator_params(axis='y', nbins=10)
     plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
     
     plt.show()
-    
+#%%
     
     
 if low_money == True:

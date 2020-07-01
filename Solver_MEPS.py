@@ -50,10 +50,14 @@ def initial_params(energy_mix, t_end, electricity_share_end):
                                            
     list_of_params = [solar, wind, nuclear]
 
+    # PHS
     pumped_hydro_capacity_europe = 640 + 1032 + 600 + 560 + 8480 + 504 + 2087 + 590 + 950 + 4018 + 591 + 690 + 2064 + 487 + 3428 + 476 + 523 + 642 + 1300 + 24500 + 36400 + 3600 + 4675
     NL_frac_europe = 0.05
     # 'cost_init': 75, 'power_init': pumped_hydro_capacity_europe*1e6*NL_frac_europe,
     # 'tau_life': 50,
+    # Li-ion
+    # 'cost_init': 380, 'power_init': 0.03e6,
+    # 'tau_life': 15
 
     storage = {'name': 'storage', 'cost_init': 75, 'power_init': pumped_hydro_capacity_europe*1e6*NL_frac_europe,
             'tau_exp': 4, 'tau_life': 50, 'td0': td0,'cap_factor': 0.85,
@@ -124,6 +128,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
        
             if power_current >= p_sat:
                 growth = 0
+                # invest = 0
                 invest = parameters[renewable['name']][i]*max_budget
                 #year of saturation
                 if saturation_years[renewable['name']][1] == 0:
@@ -186,10 +191,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
         plt.xlabel('Year')
         plt.ylabel('Nominal Installed Capacity (TWh)')
         plt.grid(True)
-        plt.locator_params(axis='x', nbins=10)
-        plt.locator_params(axis='y', nbins=10)
         plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
-        plt.show()
         plt.show()
         
         ax = plt.gca()
@@ -204,86 +206,60 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
         plt.xlabel('Year')
         plt.ylabel('Electricity Production (norm)')
         plt.grid(True)
-        plt.locator_params(axis='x', nbins=10)
-        plt.locator_params(axis='y', nbins=10)
         plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
-        
-        plt.show()
         plt.show()
         
-        ax = plt.gca()
         
-        #plot for yearly co2 production with the grand total plotted
-
-        plt.bar(years, co2_yearly_matrix[0,:])
-        plt.plot(years,co2_total_matrix[0,:])
-        handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles, labels)
-        ax.set_ylim(ymin=0)
-        ax.set_xlim(xmin=2020)
-        plt.xlabel('Year')
-        plt.ylabel('CO2 per year + integrated CO2')
+        #plot for yearly co2 production with grand total plotted  
+        fig, ax1 = plt.subplots()
+        color = 'tab:blue'
+        ax1.bar(years, co2_yearly_matrix[0,:]/1e9,color=color)
+        ax1.set_ylim(ymin=0)
+        ax1.set_xlabel('Year')
+        ax1.set_ylabel('CO2 emissions (billion kg/year)',color=color)
+        ax1.tick_params(axis='y', labelcolor=color)
         plt.grid(True)
-        plt.locator_params(axis='x', nbins=10)
-        plt.locator_params(axis='y', nbins=10)
         plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
         
-        plt.show()
-        plt.show()
-        
-        #plot for total costs per year
-
-        plt.bar(years, costs_total_matrix[0,:])
-        
-        handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles, labels)
-        ax.set_ylim(ymin=0)
-        ax.set_xlim(xmin=2020)
-        plt.xlabel('Year')
-        plt.ylabel('Integrated costs (euros)')
-        plt.grid(True)
-        plt.locator_params(axis='x', nbins=10)
-        plt.locator_params(axis='y', nbins=10)
+        ax2 = ax1.twinx()
+        color = 'tab:red'
+        ax2.plot(years,co2_total_matrix[0,:]/1e9,'--o',color=color)
+        ax2.set_ylabel('Integrated CO2 emissions (billion kg)',color=color)
+        ax2.set_ylim(ymin=0)
+        ax2.tick_params(axis='y', labelcolor=color)
         plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
         
-        plt.show()
+        fig.tight_layout()  # otherwise the right y-label is slightly clipped
         plt.show()
         
         #plot for the total costs per renewable
+        #generation only
         ax = plt.gca()
-        for i, row in enumerate(invest_matrix):
-            plt.plot(years, row, label=list_of_params[i]['name'])
+        for i, row in enumerate(invest_matrix[:-1]):
+            if i == 0:
+                bottom = np.zeros(len(row))
+            else:
+                bottom = sum(invest_matrix[:i])/1e9
+            plt.bar(years, row/1e9, bottom = bottom, label=list_of_params[i]['name'])
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles, labels)
-        ax.set_ylim(ymin=0)
         ax.set_xlim(xmin=2020)
         plt.xlabel('Year')
-        plt.ylabel('Yearly investment per renewable (euro)')
+        plt.ylabel('Yearly investment per renewable (billion euros)')
         plt.grid(True)
-        plt.locator_params(axis='x', nbins=10)
-        plt.locator_params(axis='y', nbins=10)
         plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
         plt.show()
-        plt.show()
-        
-        #plot integrated costs per renewable
-        
+        #storage + generation
         ax = plt.gca()
-        for i, row in enumerate( integrated_invest_matrix):
-            plt.plot(years, row, label=list_of_params[i]['name'])
+        plt.bar(years, invest_matrix[-1]/1e9,color='tab:red', label=list_of_params[-1]['name'])
+        plt.bar(years, sum(invest_matrix[:-1])/1e9,color='m',bottom=invest_matrix[-1]/1e9, label='all renewables')
         handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles, labels)
-        ax.set_ylim(ymin=0)
+        ax.legend(handles, labels,loc='lower right')
         ax.set_xlim(xmin=2020)
         plt.xlabel('Year')
-        plt.ylabel('Integrated costs per renewable (euro)')
+        plt.ylabel('Yearly investment (billion euros)')
         plt.grid(True)
-        plt.locator_params(axis='x', nbins=10)
-        plt.locator_params(axis='y', nbins=10)
         plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
-        plt.show()
-        plt.show()
-         
         
                 
     return cost, co2_total, percentage, saturation_years
