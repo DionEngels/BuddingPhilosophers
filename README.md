@@ -1,7 +1,7 @@
 # BuddingPhilosophers
 
 That is the name of our group.
-Welcome to the Github of 0LM180 Practice Assignment Group 3!
+Welcome to the Github of 0LM180 Practice Assignment Group 6!
 
 # Github setup
 In this Github, you'll find several files. Firslty, you'll find two solvers. These are the solvers as explained in the report. There is a special one for the sweep. Unless you want to edit this, you will not have to touch these. The main programs call whatever solver they need.
