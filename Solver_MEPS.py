@@ -283,28 +283,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
         plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
         plt.show()
         plt.show()
-  
-    
-        #plot iterations vs time
-        
-        ax = plt.gca()
-        
-        plt.scatter([0.001, 0.024, 0.079, 0.779, 7.255, 68.965, 716.472],[1, 10, 100, 1000, 10000, 100000, 1000000])
-        
-        
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_ylim(ymin=0.1)
-        ax.set_xlim(xmin=0.0001)
-        plt.xlabel('Computational Time (seconds)')
-        plt.ylabel('Number of Iterations')
-        plt.grid(True)
-
-        plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
-        plt.show()
-        plt.show()
-
-        
+         
         
                 
     return cost, co2_total, percentage, saturation_years
