@@ -12,6 +12,7 @@ import Solver_for_sweep
 #import main.norm_vector_not_full, main.change_params, main.increase_params, main.norm_params
 import time
 import matplotlib.pyplot as plt
+import sys
 
 
 #%% Input
@@ -32,7 +33,7 @@ fit_factor_exp = 0.1 #exponential
 td0 = -1
 fit_factor_lin = 1 #linear
 
-set_number_of_loops = 10000
+set_number_of_loops = 200000
 final_visualization = input('Do you want optimization visuals? n=0/y=1: ')
 
 #%% Initialization 2
@@ -42,40 +43,41 @@ set_tech = set_storages +set_renewables
 #%% Definition of sweep function
 
 sweep_var = ['input_elec_share','input_energy_mix','dutch_budget','fit_factor_exp','td0','fit_factor_lin']
-
+# sweep_var = ['fit_factor_exp','td0','fit_factor_lin'] # example if you only wanted to sweep these parameters
+# sweep_var = ['td0']
 def sweep(name_of_sweep_variable):
     assert type(name_of_sweep_variable) == str
     
-    if name_of_sweep_variable == sweep_var[0]: #input_elec_share
+    if name_of_sweep_variable == 'input_elec_share':
         print('Sweeping', name_of_sweep_variable, 'now')
-        sweep_values = [0.1, 0.3, 0.5, 0.7]
+        sweep_values = [0.1, 0.3, 0.5, 0.7, 1]
         return sweep_values
     
     # this one is different (not just one value to set)
-    if name_of_sweep_variable == sweep_var[1]: #input_energy_mix
+    if name_of_sweep_variable == 'input_energy_mix':
         print('Sweeping', name_of_sweep_variable, 'now')
         # set values for nuclear share, then calc wind and solar as even split of the rest
         sweep_values = [0.1, 0.3, 0.5, 0.7, 0.9]
         return sweep_values
     
-    if name_of_sweep_variable == sweep_var[2]: #dutch_budget
+    if name_of_sweep_variable == 'dutch_budget':
         print('Sweeping', name_of_sweep_variable, 'now')
-        sweep_values = [1e9, 5e9, 1e10, 5e10, 1e11, 5e11]
+        sweep_values = [1e8, 5e8, 1e9, 5e9, 1e10, 5e10, 1e11, 5e11]
         return sweep_values
     
-    if name_of_sweep_variable == sweep_var[3]: #fit_factor_exp
+    if name_of_sweep_variable == 'fit_factor_exp':
         print('Sweeping', name_of_sweep_variable, 'now')
-        sweep_values = [0.01, 0.05, 0.1, 0.5, 1]
+        sweep_values = [0.001, 0.005, 0.01, 0.01, 0.05, 0.1, 0.5, 1, 10, 100]
+        return sweep_values
+
+    if name_of_sweep_variable == 'td0':
+        print('Sweeping', name_of_sweep_variable, 'now')
+        sweep_values = [-10 ,-3, -2, -1, -0.1, 2, 4, 6, 8, 10, 15]
         return sweep_values
     
-    if name_of_sweep_variable == sweep_var[4]: #td0
+    if name_of_sweep_variable == 'fit_factor_lin':
         print('Sweeping', name_of_sweep_variable, 'now')
-        sweep_values = [-3, -2, -1, 8, 10]
-        return sweep_values
-    
-    if name_of_sweep_variable == sweep_var[5]: #fit_factor_lin
-        print('Sweeping', name_of_sweep_variable, 'now')
-        sweep_values = [0.2, 0.6, 1, 1.4, 1.8]
+        sweep_values = [0.01, 0.2, 0.6, 1, 1.4, 1.8, 10]
         return sweep_values
         
 #%% optimization functions
@@ -140,7 +142,9 @@ sweep_values_full = []
 sweep_co2_full = []
 sweep_cost_full = [] #here store sweep results for all trials, so can access after loop is finished
 
-#can slice sweep_var here if only interested in one or two parameters
+pass_count = 0
+full_time = time.time()
+
 for sweep_number, variable in enumerate(sweep_var):
     
     #reset all sweeped values to original
@@ -156,135 +160,148 @@ for sweep_number, variable in enumerate(sweep_var):
     sweep_cost = np.zeros(len(sweep_values))
     
     for value_index in range(len(sweep_values)):
-        if variable == 'input_energy_mix':
-            globals()[variable]['nuclear'] = sweep_values[value_index]
-            globals()[variable]['solar'] = 0.5*(1 - sweep_values[value_index])
-            globals()[variable]['wind'] = 0.5*(1 - sweep_values[value_index])
-        else:
-            globals()[variable] = sweep_values[value_index]
-        print('New value for',variable,'=',globals()[variable])
-    
-        storage_buff = 20
-        lowest_cost = float('Inf')
-        best_parameters = []
+        try:
+            if variable == 'input_energy_mix':
+                globals()[variable]['nuclear'] = sweep_values[value_index]
+                globals()[variable]['solar'] = 0.5*(1 - sweep_values[value_index])
+                globals()[variable]['wind'] = 0.5*(1 - sweep_values[value_index])
+            else:
+                globals()[variable] = sweep_values[value_index]
+            print('New value for',variable,'=',globals()[variable])
         
-        loop = 0
-        max_iter = 500
-        
-        start = time.time()
-        
-        # list for dominance (co2 vs cost) plot
-        dominance_co2 = np.zeros(set_number_of_loops)
-        dominance_cost = np.zeros(set_number_of_loops)
-        dominance_loop = np.zeros(set_number_of_loops)
-        
-        while loop < set_number_of_loops:
-            try:
-                trans_years = np.asarray([int(sat[0]) for key, sat in saturation_years.items() if key!='storage'])
-                trans_years[trans_years == 0] = set_start_year*10
-                if np.mean(trans_years) < set_start_year + 10:
-                    storage_buff = storage_buff*1.2
-            except:
-                pass
-            iter_loop = 0
-            parameter_values = norm_vector_not_full(set_tech, years, storage_buff)
-            parameters = {method:parameter_values[num, :] for num, method in enumerate(set_tech)}
+            storage_buff = 20
+            lowest_cost = float('Inf')
+            best_parameters = []
             
-            while iter_loop < max_iter:
-                cost, co2_total, percentage, saturation_years = Solver_for_sweep.solver(parameters, input_energy_mix, input_end_year, dutch_budget, input_elec_share, fit_factor_exp, td0, fit_factor_lin, 0)
-        
-                if loop % (set_number_of_loops/5) == 0:    
-                    print('Starting '+str(loop)+' of ' + str(set_number_of_loops))
-                
-                if co2_total > input_total_CO2_limit:
-                    loop+=1
-                    high_co2 = True
-                    break
-                
-                if any(values == 0 for values in percentage.values()):
-                    low_money = True
-                    high_co2 = False
-                    if iter_loop == 0:
-                        storage_buff = storage_buff/1.2
-                
-                if any(values < 100 for values in percentage.values()):
-                    for key, values in percentage.items():
-                        if values < 100:
-                            parameters = increase_params(set_tech, parameters, key, input_end_year, set_start_year)
-                            
-                    parameters = norm_params(parameters)
-                    loop+=1
-                    iter_loop +=1
-                    if loop == set_number_of_loops:
-                        break
-                    else:
-                        continue
-        
-                if cost < lowest_cost:
-                    low_money = False
-                    high_co2 = False
-                    lowest_cost = cost
-                    best_parameters = parameters.copy()
-                    
-                    dominance_co2[loop] = co2_total
-                    dominance_cost[loop] = cost
-                    dominance_loop[loop] = loop
-                    
-                    iter_loop+=1
-                    loop+=1
-                    parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
-                else:
-                    loop+=1
-                    iter_loop+=1
-                    parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
-                    
-                if loop == set_number_of_loops:
-                    break
-        
-        dominance_co2 = dominance_co2[dominance_co2 > 0]
-        dominance_cost = dominance_cost[dominance_cost > 0]
-        dominance_loop = dominance_loop[dominance_loop > 0]
-        
-        
-        
-        print('Time taken: ' + str(round(time.time() - start, 3)))
-        
-        if best_parameters==[]:
-            print("No solution found")
-        else:
-            cost, co2_total, percentage, saturation_years = Solver_for_sweep.solver(best_parameters,
-                             input_energy_mix, input_end_year, dutch_budget, input_elec_share,
-                             fit_factor_exp, td0, fit_factor_lin, final_visualization)
+            loop = 0
+            max_iter = 500
             
-            sweep_co2[value_index] = co2_total
-            sweep_cost[value_index] = cost
-            
-            low_money  = False
+            start = time.time()
             
             if final_visualization == 1:
-                ax = plt.gca()
-                scatter = plt.scatter(dominance_cost/1e9, dominance_co2/1e9, c=dominance_co2/1e9, cmap = 'Purples',s=500, edgecolors="black")
-                plt.xlabel('Total cost (billion euros)')
-                plt.ylabel('Integrated CO2 emission (billion kg)')
-                handles, _ = scatter.legend_elements(num=2)
-                labels = ['first iteration','last iteration']
-                plt.legend(handles, labels)
-                plt.show()
-        if low_money == True:
-            print("You are too poor. Increase total budget")
-        if high_co2 == True:
-            print("You are over the CO2 limit. Increase CO2 limit or spend more.")
-
+                dominance_co2 = np.zeros(set_number_of_loops)
+                dominance_cost = np.zeros(set_number_of_loops)
+                dominance_loop = np.zeros(set_number_of_loops)
+            
+            while loop < set_number_of_loops:
+                try:
+                    trans_years = np.asarray([int(sat[0]) for key, sat in saturation_years.items() if key!='storage'])
+                    trans_years[trans_years == 0] = set_start_year*10
+                    if np.mean(trans_years) < set_start_year + 10:
+                        storage_buff = storage_buff*1.2
+                except:
+                    pass
+                iter_loop = 0
+                parameter_values = norm_vector_not_full(set_tech, years, storage_buff)
+                parameters = {method:parameter_values[num, :] for num, method in enumerate(set_tech)}
+                
+                while iter_loop < max_iter:
+                    cost, co2_total, percentage, saturation_years = Solver_for_sweep.solver(parameters, input_energy_mix, input_end_year, dutch_budget, input_elec_share, fit_factor_exp, td0, fit_factor_lin, 0)
+            
+                    if loop % (set_number_of_loops/5) == 0:    
+                        print('Starting '+str(loop)+' of ' + str(set_number_of_loops))
+                    
+                    if co2_total > input_total_CO2_limit:
+                        loop+=1
+                        high_co2 = True
+                        break
+                    
+                    if any(values == 0 for values in percentage.values()):
+                        low_money = True
+                        high_co2 = False
+                        if iter_loop == 0:
+                            storage_buff = storage_buff/1.2
+                    
+                    if any(values < 100 for values in percentage.values()):
+                        for key, values in percentage.items():
+                            if values < 100:
+                                parameters = increase_params(set_tech, parameters, key, input_end_year, set_start_year)
+                                
+                        parameters = norm_params(parameters)
+                        loop+=1
+                        iter_loop +=1
+                        if loop == set_number_of_loops:
+                            break
+                        else:
+                            continue
+            
+                    if cost < lowest_cost:
+                        low_money = False
+                        high_co2 = False
+                        lowest_cost = cost
+                        best_parameters = parameters.copy()
+                        
+                        if final_visualization == 1:
+                            dominance_co2[loop] = co2_total
+                            dominance_cost[loop] = cost
+                            dominance_loop[loop] = loop
+                        
+                        iter_loop+=1
+                        loop+=1
+                        parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
+                    else:
+                        loop+=1
+                        iter_loop+=1
+                        parameters = change_params(set_tech, parameters,saturation_years, input_end_year, set_start_year)
+                        
+                    if loop == set_number_of_loops:
+                        break
+            
+            if final_visualization == 1:
+                dominance_co2 = dominance_co2[dominance_co2 > 0]
+                dominance_cost = dominance_cost[dominance_cost > 0]
+                dominance_loop = dominance_loop[dominance_loop > 0]
+            
+            
+            
+            print('Time taken: ', round((time.time() - start)/60, 3), 'minutes')
+            
+            if best_parameters==[]:
+                print("No solution found")
+            else:
+                cost, co2_total, percentage, saturation_years = Solver_for_sweep.solver(best_parameters,
+                                 input_energy_mix, input_end_year, dutch_budget, input_elec_share,
+                                 fit_factor_exp, td0, fit_factor_lin, final_visualization)
+                
+                sweep_co2[value_index] = co2_total
+                sweep_cost[value_index] = cost
+                
+                low_money  = False
+                
+                if final_visualization == 1:
+                    ax = plt.gca()
+                    scatter = plt.scatter(dominance_cost/1e9, dominance_co2/1e9, c=dominance_co2/1e9, cmap = 'Purples',s=500, edgecolors="black")
+                    plt.xlabel('Total cost (billion euros)')
+                    plt.ylabel('Integrated CO2 emission (billion kg)')
+                    handles, _ = scatter.legend_elements(num=2)
+                    labels = ['first iteration','last iteration']
+                    plt.legend(handles, labels)
+                    plt.show()
+            if low_money == True:
+                print("You are too poor. Increase total budget")
+            if high_co2 == True:
+                print("You are over the CO2 limit. Increase CO2 limit or spend more.")
+        except:
+            pass_count += 1
+            print('Encountered error:', sys.exc_info()[0],'... passing')
+            pass
 #%%
     sweep_values_full.append(sweep_values)
     sweep_co2_full.append(sweep_co2)
     sweep_cost_full.append(sweep_cost)
+    
+print('Number of errors:', pass_count)
+print('Full time taken: ', round((time.time() - full_time)/60, 3), 'minutes')
 #%%
+for sweep_number, variable in enumerate(sweep_var):
     if variable == 'input_energy_mix':
         variable = 'nuclear share'
-
+    sweep_values = sweep_values_full[sweep_number]
+    sweep_co2 = sweep_co2_full[sweep_number]
+    sweep_cost = sweep_cost_full[sweep_number]
+    
     fig, ax1 = plt.subplots()
-    if sweep_number == 2 or sweep_number == 3: #dutch budget and fit_factor_exp
+    if variable == 'dutch_budget' or variable == 'fit_factor_exp' or variable == 'fit_factor_lin':
         plt.xscale("log")
         ax1.set_xlim(0.90*min(sweep_values), 1.10*max(sweep_values))
     color = 'tab:red'
@@ -298,6 +315,7 @@ for sweep_number, variable in enumerate(sweep_var):
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
     
     color = 'tab:blue'
+    ax2.set_xlabel('Sweep values for '+variable)
     ax2.set_ylabel('Total cost (billion euros)', color=color)
     ax2.plot(sweep_values, sweep_cost/1e9, '--o', color=color)
     ax2.tick_params(axis='y', labelcolor=color)
