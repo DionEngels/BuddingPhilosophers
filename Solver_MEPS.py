@@ -112,7 +112,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
             co2_total_matrix[0,year+1] = co2_total
         
         for i, renewable in enumerate(list_of_params):
-            invest = parameters[renewable['name']][i]*max_budget
+            invest = parameters[renewable['name']][year]*max_budget
             power_current = renewable['power_current']
             cost_current = renewable['cost_init']*(0.5)**log10(power_current/renewable['power_init'])
             tau_life = renewable['tau_life']
@@ -129,7 +129,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
             if power_current >= p_sat:
                 growth = 0
                 # invest = 0
-                invest = parameters[renewable['name']][i]*max_budget
+                #invest = parameters[renewable['name']][i]*max_budget
                 #year of saturation
                 if saturation_years[renewable['name']][1] == 0:
                     saturation_years[renewable['name']][1] = year+t_init        
@@ -151,7 +151,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
                 
             if power_current + growth > p_sat:
                 growth = p_sat - power_current
-                invest = (growth - p_sat/tau_life)*(cost_current*fit_factor)
+                #invest = (growth - p_sat/tau_life)*(cost_current*fit_factor)
                 if invest < 0:
                     invest = 0
                 power_current = p_sat

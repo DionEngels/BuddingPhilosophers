@@ -81,7 +81,7 @@ dutch_budget = 1e11
 input_budget = input_budget_fraction*dutch_budget
 input_elec_share = 0.26 #high estimate 0.54
 
-set_number_of_loops = 50
+set_number_of_loops = 100000
 max_iter = 500
 storage_buff = 20
 
@@ -199,4 +199,4 @@ else:
 if low_money == True:
     print("You are too poor. Increase total budget")
 if high_co2 == True:
-    print("You are over the CO2 limit. Increase CO2 limit or spend more.")
+    print("You are over the CO2 limit. Increase CO2 limit or spend more to transition faster.")
