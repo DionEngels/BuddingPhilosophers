@@ -42,8 +42,8 @@ set_tech = set_storages +set_renewables
 
 #%% Definition of sweep function
 
-sweep_var = ['input_elec_share','input_energy_mix','dutch_budget','fit_factor_exp','td0','fit_factor_lin']
-# sweep_var = ['fit_factor_exp','td0','fit_factor_lin'] # example if you only wanted to sweep these parameters
+#sweep_var = ['input_elec_share','input_energy_mix','dutch_budget','fit_factor_exp','td0','fit_factor_lin']
+ sweep_var = ['dutch_budget',] # example if you only wanted to sweep these parameters
 # sweep_var = ['td0']
 def sweep(name_of_sweep_variable):
     assert type(name_of_sweep_variable) == str
@@ -87,30 +87,27 @@ def norm_vector_not_full(method, years, storage_buff):
     for year_index, year in enumerate(years):
         vector = np.random.rand(len(method))
         vector[0] = vector[0]*storage_buff
-        total[:,year_index] = vector/sum(vector)#*np.random.rand()
+        total[:,year_index] = vector/sum(vector)
 
     return total
 
 def change_params(set_tech, parameters, saturation_years, input_end_year, set_start_year):
-    i=0
     
     new_params = parameters.copy()
     
     for key, values in parameters.items():
+        
         if saturation_years[key][1] != input_end_year:
             new_values=values.copy()
             
-            if saturation_years[key][0] < set_start_year + 5:
-                new_values[:] = new_values[:]*0.9
-            else:
-                new_values[int(saturation_years[key][0]-set_start_year-1):] = new_values[int(saturation_years[key][0]-set_start_year-1):]*0.9
+            #if saturation_years[key][0] < set_start_year + 5:
+            #    new_values[:] = new_values[:]*0.9
+            #else:
+            new_values[int(saturation_years[key][0]-set_start_year):] = new_values[int(saturation_years[key][0]-set_start_year):]*0.9
             
             new_params[key] = new_values
     
-        i +=1
-
     return new_params
-
 
 def increase_params(set_tech, parameters, key, input_end_year, set_start_year):
     
@@ -134,7 +131,6 @@ def norm_params(parameters):
     new_params = {method:total[num, :] for num, method in enumerate(parameters.keys())}
     
     return new_params
-
 
 #%% Main part
 
@@ -174,7 +170,7 @@ for sweep_number, variable in enumerate(sweep_var):
             best_parameters = []
             
             loop = 0
-            max_iter = 500
+            max_iter = 250
             
             start = time.time()
             
