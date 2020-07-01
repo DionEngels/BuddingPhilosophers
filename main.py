@@ -78,7 +78,7 @@ dutch_budget = 1e12
 input_budget = input_budget_fraction*dutch_budget
 input_elec_share = 0.26 #high estimate 0.54
 
-set_number_of_loops = 50000
+set_number_of_loops = 200000
 max_iter = 250
 storage_buff = 100
 
