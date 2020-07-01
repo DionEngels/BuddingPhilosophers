@@ -260,6 +260,7 @@ def solver(parameters, energy_mix, t_end, max_budget, electricity_share_end, vis
         plt.ylabel('Yearly investment (billion euros)')
         plt.grid(True)
         plt.tick_params(direction='in', axis='both', which='both', top='True', right='True')
+        plt.show()
         
                 
     return cost, co2_total, percentage, saturation_years
